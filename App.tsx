@@ -18,9 +18,9 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
-  SafeAreaView,
   Platform,
 } from "react-native";
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import {
   loadSettings,
   saveSettings,
@@ -43,7 +43,13 @@ import {
   getTodayScreenTime,
   AppUsage,
 } from "./src/useScreenTime";
-import { useForgeMonitor } from "./src/useForgeMonitor";
+
+import {
+  syncWakeTime,
+  syncBedBaseline,
+  syncDayEnded,
+  syncClearDay,
+} from "./src/widgetSync";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -112,7 +118,6 @@ export default function App() {
   const [screenTime, setScreenTime] = useState<AppUsage[]>([]);
   const [undoVisible, setUndoVisible] = useState(false);
   const [undoSecs, setUndoSecs] = useState(5);
-  const [forgeTriggered, setForgeTriggered] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
   const undoRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -169,13 +174,7 @@ export default function App() {
   const elapsed = wakeTime ? (now.getTime() - new Date(wakeTime).getTime()) / 1000 : 0;
   const progress = totalWindow ? Math.min(Math.max(elapsed / totalWindow, 0), 1) : 0;
 
-  // ── Forge monitor ─────────────────────────────────────────────
-  useForgeMonitor({
-    active: !!wakeTime && !dayEnded,
-    settings,
-    dayStartMs: wakeTime ? new Date(wakeTime).getTime() : 0,
-    onTrigger: (pkg) => setForgeTriggered(pkg),
-  });
+
 
   // ── Actions ───────────────────────────────────────────────────
   const logWake = useCallback(async (time?: Date) => {
@@ -183,6 +182,7 @@ export default function App() {
     setWakeTime(t);
     setScreen("home");
     await saveActiveDay({ wakeTime: t });
+    await syncWakeTime(t);
     if (bedTarget) await scheduleBedtimeNudge(getBedTarget(t, settings).getTime());
   }, [settings]);
 
@@ -208,6 +208,7 @@ export default function App() {
     setDayEnded(true);
     setUndoVisible(false);
     await cancelBedtimeNudge();
+    await syncDayEnded();
     if (wakeTime) {
       const log: DayLog = {
         date: new Date(wakeTime).toISOString().split("T")[0],
@@ -231,6 +232,7 @@ export default function App() {
   const saveSettingsAndApply = useCallback(async (s: AppSettings) => {
     setSettings(s);
     await saveSettings(s);
+    await syncBedBaseline(s.baselineBedH, s.baselineBedM);
   }, []);
 
   // ── Month/Year data ───────────────────────────────────────────
@@ -248,373 +250,353 @@ export default function App() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+    <SafeAreaProvider>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+        <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 72 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── ONBOARDING ── */}
-        {screen === "onboarding" && (
-          <View style={[s.pad, { paddingTop: 72, alignItems: "center" }]}>
-            <Text style={[s.label, { marginBottom: 12 }]}>conscious time</Text>
-            <Text style={[s.serif, { fontSize: 64, color: C.text }]}>Vigil</Text>
-            <Text style={[s.body, { textAlign: "center", marginTop: 20, marginBottom: 56, lineHeight: 22 }]}>
-              A mirror for your waking hours.{"\n"}No coaching. No goals. Only what is.
-            </Text>
-            <View style={{ width: "100%", marginBottom: 32 }}>
-              <Text style={[s.label, { marginBottom: 20 }]}>Set your baseline</Text>
-              <Text style={[s.sublabel, { marginBottom: 8 }]}>TARGET BEDTIME</Text>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 72 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── ONBOARDING ── */}
+          {screen === "onboarding" && (
+            <View style={[s.pad, { paddingTop: 72, alignItems: "center" }]}>
+              <Text style={[s.label, { marginBottom: 12 }]}>conscious time</Text>
+              <Text style={[s.serif, { fontSize: 64, color: C.text }]}>Vigil</Text>
+              <Text style={[s.body, { textAlign: "center", marginTop: 20, marginBottom: 56, lineHeight: 22 }]}>
+                A mirror for your waking hours.{"\n"}No coaching. No goals. Only what is.
+              </Text>
+              <View style={{ width: "100%", marginBottom: 32 }}>
+                <Text style={[s.label, { marginBottom: 20 }]}>Set your baseline</Text>
+                <Text style={[s.sublabel, { marginBottom: 8 }]}>TARGET BEDTIME</Text>
+                <View style={s.row}>
+                  {/* Simple inline pickers — swap with @react-native-picker/picker */}
+                  <TouchableOpacity
+                    style={s.pickerBtn}
+                    onPress={() => saveSettingsAndApply({
+                      ...settings,
+                      baselineBedH: (settings.baselineBedH + 1) % 24,
+                    })}
+                  >
+                    <Text style={s.pickerVal}>{pad(settings.baselineBedH)}</Text>
+                    <Text style={s.pickerLabel}>hour ↕</Text>
+                  </TouchableOpacity>
+                  <Text style={[s.body, { color: C.textFaint, paddingHorizontal: 8 }]}>:</Text>
+                  <TouchableOpacity
+                    style={s.pickerBtn}
+                    onPress={() => saveSettingsAndApply({
+                      ...settings,
+                      baselineBedM: (settings.baselineBedM + 15) % 60,
+                    })}
+                  >
+                    <Text style={s.pickerVal}>{pad(settings.baselineBedM)}</Text>
+                    <Text style={s.pickerLabel}>min ↕</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <TouchableOpacity style={[s.btnPrimary, { width: "100%", marginBottom: 10 }]} onPress={() => setScreen("home")}>
+                <Text style={s.btnPrimaryText}>Begin</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* ── HOME ── */}
+          {screen === "home" && (
+            <View>
+              <View style={[s.row, s.pad, { paddingTop: 24, justifyContent: "space-between" }]}>
+                <Text style={s.sectionTitle}>VIGIL</Text>
+                <Text style={[s.sectionTitle]}>{formatDate(now)}</Text>
+              </View>
+
+              {/* Tab bar */}
+              <View style={[s.row, { borderBottomWidth: 1, borderBottomColor: C.borderDim, marginHorizontal: 28, marginTop: 16 }]}>
+                {(["today", "month", "year"] as HomeTab[]).map(tab => (
+                  <TouchableOpacity
+                    key={tab}
+                    onPress={() => setHomeTab(tab)}
+                    style={[s.tab, homeTab === tab && s.tabActive]}
+                  >
+                    <Text style={[s.tabText, homeTab === tab && s.tabTextActive]}>
+                      {tab.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* TODAY */}
+              {homeTab === "today" && (
+                <View style={[s.pad, { paddingTop: 28, alignItems: "center" }]}>
+                  {!wakeTime && (
+                    <View style={{ width: "100%", alignItems: "center" }}>
+                      <Text style={[s.label, { marginBottom: 32 }]}>DAY NOT STARTED</Text>
+                      <Text style={[s.serif, { fontSize: 42, color: C.textGhost, marginBottom: 36 }]}>
+                        {formatTime(now)}
+                      </Text>
+                      <TouchableOpacity style={[s.btnPrimary, { width: "100%", marginBottom: 10 }]} onPress={() => logWake()}>
+                        <Text style={s.btnPrimaryText}>Start</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  {wakeTime && dayEnded && (
+                    <View style={{ alignItems: "center" }}>
+                      <Text style={[s.label, { marginBottom: 20 }]}>DAY ENDED</Text>
+                      <Text style={[s.serif, { fontSize: 42, color: C.textGhost }]}>
+                        {formatDuration(elapsed, false)}
+                      </Text>
+                      <Text style={[s.tiny, { marginTop: 6, color: C.textFaint }]}>awake today</Text>
+                      {bedTime && (
+                        <Text style={[s.body, { marginTop: 16, color: C.textFaint }]}>
+                          Slept at {formatTime(new Date(bedTime))}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+
+                  {wakeTime && !dayEnded && (
+                    <View style={{ width: "100%", alignItems: "center" }}>
+                      {/* Countdown */}
+                      {isOvertime ? (
+                        <View style={{ alignItems: "center", marginBottom: 16 }}>
+                          <Text style={[s.tiny, { color: C.over, letterSpacing: 2, marginBottom: 4 }]}>OVERTIME</Text>
+                          <Text style={[s.serif, { fontSize: 42, color: C.over }]}>
+                            +{formatDuration(Math.abs(secsLeft!))}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ alignItems: "center", marginBottom: 16 }}>
+                          <Text style={[s.serif, { fontSize: 55, color: C.text }]}>
+                            {formatDuration(secsLeft!)}
+                          </Text>
+                          <Text style={[s.tiny, { color: C.textFaint, marginTop: 4 }]}>REMAINING</Text>
+                        </View>
+                      )}
+
+                      {/* Stats row */}
+                      <View style={[s.row, { width: "100%", gap: 1, marginBottom: 1 }]}>
+                        {[
+                          { label: "ELAPSED", value: formatDuration(elapsed, false) },
+                          { label: "TARGET BED", value: bedTarget ? formatTime(bedTarget) : "—" },
+                          { label: "WINDOW", value: totalWindow ? `${(totalWindow / 3600).toFixed(1)}h` : "—" },
+                        ].map(({ label, value }) => (
+                          <View key={label} style={s.statCell}>
+                            <Text style={s.statLabel}>{label}</Text>
+                            <Text style={s.statValue}>{value}</Text>
+                          </View>
+                        ))}
+                      </View>
+
+                      {/* Screen time */}
+                      <View style={[s.card, { width: "100%", marginBottom: 1 }]}>
+                        <Text style={[s.tiny, { color: C.textFaint, marginBottom: 14 }]}>SCREEN TIME — TODAY</Text>
+                        {screenTime.slice(0, 4).map(({ displayName, minutes, packageName }) => (
+                          <View key={packageName} style={{ marginBottom: 10 }}>
+                            <View style={[s.row, { justifyContent: "space-between", marginBottom: 4 }]}>
+                              <Text style={[s.body, { color: C.textDim }]}>{displayName}</Text>
+                              <Text style={[s.tiny, { color: C.textFaint }]}>{minutes}m</Text>
+                            </View>
+                            <View style={s.barTrack}>
+                              <View style={[s.barFill, { width: `${Math.min((minutes / 120) * 100, 100)}%` as any }]} />
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+
+                      <TouchableOpacity style={[s.btnGhost, { width: "100%" }]} onPress={confirmBedtime}>
+                        <Text style={s.btnGhostText}>End day — confirm bedtime now</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* MONTH */}
+              {homeTab === "month" && (
+                <View style={s.pad}>
+                  <View style={[s.row, { justifyContent: "space-between", marginBottom: 24 }]}>
+                    <Text style={[s.body, { color: C.textDim, letterSpacing: 1 }]}>
+                      {now.toLocaleDateString([], { month: "long", year: "numeric" }).toUpperCase()}
+                    </Text>
+                    <Text style={[s.tiny, { color: C.textFaint }]}>day {curDay} of {daysInMonth}</Text>
+                  </View>
+
+                  {/* Day bubbles */}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 28 }}>
+                    {Array.from({ length: daysInMonth }, (_, i) => {
+                      const d = i + 1;
+                      const isToday = d === curDay;
+                      const isPast = d < curDay;
+                      const isFuture = d > curDay;
+                      return (
+                        <View key={d} style={[
+                          s.dayBubble,
+                          isPast && { backgroundColor: "#2a2818" },
+                          isToday && { backgroundColor: "#9a8450" },
+                          isFuture && { borderColor: "#3a3828" },
+                        ]}>
+                          {isToday && (
+                            <View style={[s.dayFill, { height: `${progress * 100}%` as any }]} />
+                          )}
+                          <Text style={[s.tiny, {
+                            color: isPast ? "#9a9070" : isToday ? "#0e0e0e" : "#5a5848",
+                            position: "relative", zIndex: 1,
+                          }]}>{d}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <ProgressBar label="MONTH ELAPSED" pct={monthProgress} />
+                  <View style={s.callout}>
+                    <Text style={[s.body, { color: C.textFaint }]}>Days remaining</Text>
+                    <Text style={[s.body, { color: C.textDim }]}>{daysInMonth - curDay}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* YEAR */}
+              {homeTab === "year" && (
+                <View style={s.pad}>
+                  <View style={[s.row, { justifyContent: "space-between", marginBottom: 24 }]}>
+                    <Text style={[s.body, { color: C.textDim, letterSpacing: 1 }]}>{curYear}</Text>
+                    <Text style={[s.tiny, { color: C.textFaint }]}>day {dayOfYear} of {daysInYear}</Text>
+                  </View>
+
+                  {/* Month bubbles — 2 rows of 6 */}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+                    {monthNames.map((name, i) => {
+                      const isPast = i < curMonth;
+                      const isNow = i === curMonth;
+                      const isFuture = i > curMonth;
+                      const dInMo = new Date(curYear, i + 1, 0).getDate();
+                      const fill = isNow
+                        ? (curDay - 1 + (now.getHours() * 60 + now.getMinutes()) / 1440) / dInMo
+                        : isPast ? 1 : 0;
+                      return (
+                        <View key={i} style={[
+                          s.monthBubble,
+                          isNow && { borderColor: C.sandMid },
+                          isFuture && { borderColor: "#2a2818" },
+                        ]}>
+                          {!isFuture && (
+                            <View style={[s.dayFill, { height: `${fill * 100}%` as any, backgroundColor: isPast ? "#2a2818" : "#6e5e3a" }]} />
+                          )}
+                          <Text style={[s.tiny, { fontSize: 8, color: isFuture ? "#4a4838" : isPast ? "#7a7868" : C.gold, zIndex: 1 }]}>
+                            {name}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+
+                  <ProgressBar label="YEAR ELAPSED" pct={yearProgress} />
+                  <View style={s.callout}>
+                    <Text style={[s.body, { color: C.textFaint }]}>Days remaining in {curYear}</Text>
+                    <Text style={[s.body, { color: C.textDim }]}>{daysInYear - dayOfYear}</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ── HISTORY ── */}
+          {screen === "history" && (
+            <View style={[s.pad, { paddingTop: 24, justifyContent: "space-between" }]}>
+              <Text style={[s.sectionTitle, { marginBottom: 36 }]}>History</Text>
+              {history.map((day, i) => (
+                <View key={i} style={s.historyRow}>
+                  <Text style={[s.body, { color: C.textDim, width: 96 }]}>
+                    {new Date(day.date).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={[s.row, { marginBottom: 8 }]}>
+                      <Text style={s.histTag}>WAKE </Text>
+                      <Text style={s.histVal}>{formatTime(new Date(day.wakeTime))}  </Text>
+                      <Text style={s.histTag}>BED </Text>
+                      <Text style={[s.histVal, day.overtime && { color: C.over }]}>
+                        {day.bedTime ? formatTime(new Date(day.bedTime)) : "—"}
+                      </Text>
+                    </View>
+                    <View style={s.barTrack}>
+                      <View style={[s.barFill, {
+                        width: `${Math.min(((day.bedTime ? (new Date(day.bedTime).getTime() - new Date(day.wakeTime).getTime()) / 3600000 : 0) / 16) * 100, 100)}%` as any,
+                        backgroundColor: day.overtime ? "#6a1810" : "#4a4030",
+                      }]} />
+                    </View>
+                    {day.overtime && (
+                      <Text style={[s.tiny, { color: C.over, marginTop: 4 }]}>overtime</Text>
+                    )}
+                  </View>
+                </View>
+              ))}
+              {history.length === 0 && (
+                <Text style={[s.body, { color: C.textGhost }]}>No days logged yet.</Text>
+              )}
+            </View>
+          )}
+
+          {/* ── SETTINGS ── */}
+          {screen === "settings" && (
+            <View style={[s.pad, { paddingTop: 24, justifyContent: "space-between" }]}>
+              <Text style={s.sectionTitle}>Baseline</Text>
+              <Text style={[s.sublabel, { marginTop: 28, marginBottom: 10 }]}>TARGET BEDTIME</Text>
               <View style={s.row}>
-                {/* Simple inline pickers — swap with @react-native-picker/picker */}
-                <TouchableOpacity
-                  style={s.pickerBtn}
-                  onPress={() => saveSettingsAndApply({
-                    ...settings,
-                    baselineBedH: (settings.baselineBedH + 1) % 24,
-                  })}
-                >
+                <TouchableOpacity style={s.pickerBtn} onPress={() =>
+                  saveSettingsAndApply({ ...settings, baselineBedH: (settings.baselineBedH + 1) % 24 })
+                }>
                   <Text style={s.pickerVal}>{pad(settings.baselineBedH)}</Text>
                   <Text style={s.pickerLabel}>hour ↕</Text>
                 </TouchableOpacity>
                 <Text style={[s.body, { color: C.textFaint, paddingHorizontal: 8 }]}>:</Text>
-                <TouchableOpacity
-                  style={s.pickerBtn}
-                  onPress={() => saveSettingsAndApply({
-                    ...settings,
-                    baselineBedM: (settings.baselineBedM + 15) % 60,
-                  })}
-                >
+                <TouchableOpacity style={s.pickerBtn} onPress={() =>
+                  saveSettingsAndApply({ ...settings, baselineBedM: (settings.baselineBedM + 15) % 60 })
+                }>
                   <Text style={s.pickerVal}>{pad(settings.baselineBedM)}</Text>
                   <Text style={s.pickerLabel}>min ↕</Text>
                 </TouchableOpacity>
               </View>
+
+              <View style={[s.divider, { marginVertical: 36 }]} />
+
             </View>
-            <TouchableOpacity style={[s.btnPrimary, { width: "100%", marginBottom: 10 }]} onPress={() => setScreen("home")}>
-              <Text style={s.btnPrimaryText}>Begin</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </ScrollView>
 
-        {/* ── HOME ── */}
-        {screen === "home" && (
-          <View>
-            <View style={[s.row, s.pad, { paddingTop: 24, justifyContent: "space-between" }]}>
-              <Text style={[s.label, { color: C.textFaint }]}>VIGIL</Text>
-              <Text style={[s.tiny, { color: C.textGhost }]}>{formatDate(now)}</Text>
-            </View>
-
-            {/* Tab bar */}
-            <View style={[s.row, { borderBottomWidth: 1, borderBottomColor: C.borderDim, marginHorizontal: 28, marginTop: 16 }]}>
-              {(["today", "month", "year"] as HomeTab[]).map(tab => (
-                <TouchableOpacity
-                  key={tab}
-                  onPress={() => setHomeTab(tab)}
-                  style={[s.tab, homeTab === tab && s.tabActive]}
-                >
-                  <Text style={[s.tabText, homeTab === tab && s.tabTextActive]}>
-                    {tab.toUpperCase()}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* TODAY */}
-            {homeTab === "today" && (
-              <View style={[s.pad, { paddingTop: 28, alignItems: "center" }]}>
-                {!wakeTime && (
-                  <View style={{ width: "100%", alignItems: "center" }}>
-                    <Text style={[s.label, { marginBottom: 32 }]}>DAY NOT STARTED</Text>
-                    <Text style={[s.serif, { fontSize: 42, color: C.textGhost, marginBottom: 36 }]}>
-                      {formatTime(now)}
-                    </Text>
-                    <TouchableOpacity style={[s.btnPrimary, { width: "100%", marginBottom: 10 }]} onPress={() => logWake()}>
-                      <Text style={s.btnPrimaryText}>Start</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {wakeTime && dayEnded && (
-                  <View style={{ alignItems: "center" }}>
-                    <Text style={[s.label, { marginBottom: 20 }]}>DAY ENDED</Text>
-                    <Text style={[s.serif, { fontSize: 42, color: C.textGhost }]}>
-                      {formatDuration(elapsed, false)}
-                    </Text>
-                    <Text style={[s.tiny, { marginTop: 6, color: C.textFaint }]}>awake today</Text>
-                    {bedTime && (
-                      <Text style={[s.body, { marginTop: 16, color: C.textFaint }]}>
-                        Slept at {formatTime(new Date(bedTime))}
-                      </Text>
-                    )}
-                  </View>
-                )}
-
-                {wakeTime && !dayEnded && (
-                  <View style={{ width: "100%", alignItems: "center" }}>
-                    {/* Countdown */}
-                    {isOvertime ? (
-                      <View style={{ alignItems: "center", marginBottom: 16 }}>
-                        <Text style={[s.tiny, { color: C.over, letterSpacing: 2, marginBottom: 4 }]}>OVERTIME</Text>
-                        <Text style={[s.serif, { fontSize: 42, color: C.over }]}>
-                          +{formatDuration(Math.abs(secsLeft!))}
-                        </Text>
-                      </View>
-                    ) : (
-                      <View style={{ alignItems: "center", marginBottom: 16 }}>
-                        <Text style={[s.serif, { fontSize: 46, color: C.text }]}>
-                          {formatDuration(secsLeft!)}
-                        </Text>
-                        <Text style={[s.tiny, { color: C.textFaint, marginTop: 4 }]}>REMAINING</Text>
-                      </View>
-                    )}
-
-                    {/* Stats row */}
-                    <View style={[s.row, { width: "100%", gap: 1, marginBottom: 1 }]}>
-                      {[
-                        { label: "ELAPSED", value: formatDuration(elapsed, false) },
-                        { label: "TARGET BED", value: bedTarget ? formatTime(bedTarget) : "—" },
-                        { label: "WINDOW", value: totalWindow ? `${(totalWindow / 3600).toFixed(1)}h` : "—" },
-                      ].map(({ label, value }) => (
-                        <View key={label} style={s.statCell}>
-                          <Text style={s.statLabel}>{label}</Text>
-                          <Text style={s.statValue}>{value}</Text>
-                        </View>
-                      ))}
-                    </View>
-
-                    {/* Screen time */}
-                    <View style={[s.card, { width: "100%", marginBottom: 1 }]}>
-                      <Text style={[s.tiny, { color: C.textFaint, marginBottom: 14 }]}>SCREEN TIME — TODAY</Text>
-                      {screenTime.slice(0, 4).map(({ displayName, minutes, packageName }) => (
-                        <View key={packageName} style={{ marginBottom: 10 }}>
-                          <View style={[s.row, { justifyContent: "space-between", marginBottom: 4 }]}>
-                            <Text style={[s.body, { color: C.textDim }]}>{displayName}</Text>
-                            <Text style={[s.tiny, { color: C.textFaint }]}>{minutes}m</Text>
-                          </View>
-                          <View style={s.barTrack}>
-                            <View style={[s.barFill, { width: `${Math.min((minutes / 120) * 100, 100)}%` as any }]} />
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-
-                    <TouchableOpacity style={[s.btnGhost, { width: "100%" }]} onPress={confirmBedtime}>
-                      <Text style={s.btnGhostText}>End day — confirm bedtime now</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* MONTH */}
-            {homeTab === "month" && (
-              <View style={s.pad}>
-                <View style={[s.row, { justifyContent: "space-between", marginBottom: 24 }]}>
-                  <Text style={[s.body, { color: C.textDim, letterSpacing: 1 }]}>
-                    {now.toLocaleDateString([], { month: "long", year: "numeric" }).toUpperCase()}
-                  </Text>
-                  <Text style={[s.tiny, { color: C.textFaint }]}>day {curDay} of {daysInMonth}</Text>
-                </View>
-
-                {/* Day bubbles */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 28 }}>
-                  {Array.from({ length: daysInMonth }, (_, i) => {
-                    const d = i + 1;
-                    const isToday = d === curDay;
-                    const isPast = d < curDay;
-                    const isFuture = d > curDay;
-                    return (
-                      <View key={d} style={[
-                        s.dayBubble,
-                        isPast && { backgroundColor: "#2a2818" },
-                        isToday && { backgroundColor: "#9a8450" },
-                        isFuture && { borderColor: "#3a3828" },
-                      ]}>
-                        {isToday && (
-                          <View style={[s.dayFill, { height: `${progress * 100}%` as any }]} />
-                        )}
-                        <Text style={[s.tiny, {
-                          color: isPast ? "#9a9070" : isToday ? "#0e0e0e" : "#5a5848",
-                          position: "relative", zIndex: 1,
-                        }]}>{d}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                <ProgressBar label="MONTH ELAPSED" pct={monthProgress} />
-                <View style={s.callout}>
-                  <Text style={[s.body, { color: C.textFaint }]}>Days remaining</Text>
-                  <Text style={[s.body, { color: C.textDim }]}>{daysInMonth - curDay}</Text>
-                </View>
-              </View>
-            )}
-
-            {/* YEAR */}
-            {homeTab === "year" && (
-              <View style={s.pad}>
-                <View style={[s.row, { justifyContent: "space-between", marginBottom: 24 }]}>
-                  <Text style={[s.body, { color: C.textDim, letterSpacing: 1 }]}>{curYear}</Text>
-                  <Text style={[s.tiny, { color: C.textFaint }]}>day {dayOfYear} of {daysInYear}</Text>
-                </View>
-
-                {/* Month bubbles — 2 rows of 6 */}
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
-                  {monthNames.map((name, i) => {
-                    const isPast = i < curMonth;
-                    const isNow = i === curMonth;
-                    const isFuture = i > curMonth;
-                    const dInMo = new Date(curYear, i + 1, 0).getDate();
-                    const fill = isNow
-                      ? (curDay - 1 + (now.getHours() * 60 + now.getMinutes()) / 1440) / dInMo
-                      : isPast ? 1 : 0;
-                    return (
-                      <View key={i} style={[
-                        s.monthBubble,
-                        isNow && { borderColor: C.sandMid },
-                        isFuture && { borderColor: "#2a2818" },
-                      ]}>
-                        {!isFuture && (
-                          <View style={[s.dayFill, { height: `${fill * 100}%` as any, backgroundColor: isPast ? "#2a2818" : "#6e5e3a" }]} />
-                        )}
-                        <Text style={[s.tiny, { fontSize: 8, color: isFuture ? "#4a4838" : isPast ? "#7a7868" : C.gold, zIndex: 1 }]}>
-                          {name}
-                        </Text>
-                      </View>
-                    );
-                  })}
-                </View>
-
-                <ProgressBar label="YEAR ELAPSED" pct={yearProgress} />
-                <View style={s.callout}>
-                  <Text style={[s.body, { color: C.textFaint }]}>Days remaining in {curYear}</Text>
-                  <Text style={[s.body, { color: C.textDim }]}>{daysInYear - dayOfYear}</Text>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* ── HISTORY ── */}
-        {screen === "history" && (
-          <View style={s.pad}>
-            <Text style={[s.sectionTitle, { marginBottom: 36 }]}>History</Text>
-            {history.map((day, i) => (
-              <View key={i} style={s.historyRow}>
-                <Text style={[s.body, { color: C.textDim, width: 96 }]}>
-                  {new Date(day.date).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <View style={[s.row, { marginBottom: 8 }]}>
-                    <Text style={s.histTag}>WAKE </Text>
-                    <Text style={s.histVal}>{formatTime(new Date(day.wakeTime))}  </Text>
-                    <Text style={s.histTag}>BED </Text>
-                    <Text style={[s.histVal, day.overtime && { color: C.over }]}>
-                      {day.bedTime ? formatTime(new Date(day.bedTime)) : "—"}
-                    </Text>
-                  </View>
-                  <View style={s.barTrack}>
-                    <View style={[s.barFill, {
-                      width: `${Math.min(((day.bedTime ? (new Date(day.bedTime).getTime() - new Date(day.wakeTime).getTime()) / 3600000 : 0) / 16) * 100, 100)}%` as any,
-                      backgroundColor: day.overtime ? "#6a1810" : "#4a4030",
-                    }]} />
-                  </View>
-                  {day.overtime && (
-                    <Text style={[s.tiny, { color: C.over, marginTop: 4 }]}>overtime</Text>
-                  )}
-                </View>
-              </View>
-            ))}
-            {history.length === 0 && (
-              <Text style={[s.body, { color: C.textGhost }]}>No days logged yet.</Text>
-            )}
-          </View>
-        )}
-
-        {/* ── SETTINGS ── */}
-        {screen === "settings" && (
-          <View style={s.pad}>
-            <Text style={s.sectionTitle}>Baseline</Text>
-            <Text style={[s.sublabel, { marginTop: 28, marginBottom: 10 }]}>TARGET BEDTIME</Text>
-            <View style={s.row}>
-              <TouchableOpacity style={s.pickerBtn} onPress={() =>
-                saveSettingsAndApply({ ...settings, baselineBedH: (settings.baselineBedH + 1) % 24 })
-              }>
-                <Text style={s.pickerVal}>{pad(settings.baselineBedH)}</Text>
-                <Text style={s.pickerLabel}>hour ↕</Text>
-              </TouchableOpacity>
-              <Text style={[s.body, { color: C.textFaint, paddingHorizontal: 8 }]}>:</Text>
-              <TouchableOpacity style={s.pickerBtn} onPress={() =>
-                saveSettingsAndApply({ ...settings, baselineBedM: (settings.baselineBedM + 15) % 60 })
-              }>
-                <Text style={s.pickerVal}>{pad(settings.baselineBedM)}</Text>
-                <Text style={s.pickerLabel}>min ↕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={[s.divider, { marginVertical: 36 }]} />
-
-            <Text style={s.sectionTitle}>Forge Mode</Text>
-            <Text style={[s.body, { color: C.textFaint, marginTop: 12, marginBottom: 20, lineHeight: 22 }]}>
-              Stake real money with a trusted friend. Open a distraction app during the day → funds donated to charity automatically.
+        {/* ── UNDO TOAST ── */}
+        {undoVisible && (
+          <View style={s.undoToast}>
+            <Text style={[s.body, { color: C.textDim }]}>
+              Committing in {undoSecs}s
             </Text>
-            <TouchableOpacity
-              style={[s.btnGhost, settings.forgeEnabled && { borderColor: C.gold }]}
-              onPress={() => saveSettingsAndApply({ ...settings, forgeEnabled: !settings.forgeEnabled })}
-            >
-              <Text style={[s.btnGhostText, settings.forgeEnabled && { color: C.gold }]}>
-                {settings.forgeEnabled ? "Forge Mode: ON" : "Enable Forge Mode"}
-              </Text>
+            <TouchableOpacity onPress={undoBedtime} style={s.undoBtn}>
+              <Text style={[s.tiny, { color: C.text }]}>UNDO</Text>
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
 
-      {/* ── UNDO TOAST ── */}
-      {undoVisible && (
-        <View style={s.undoToast}>
-          <Text style={[s.body, { color: C.textDim }]}>
-            Committing in {undoSecs}s
-          </Text>
-          <TouchableOpacity onPress={undoBedtime} style={s.undoBtn}>
-            <Text style={[s.tiny, { color: C.text }]}>UNDO</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
-      {/* ── FORGE TRIGGERED ── */}
-      {forgeTriggered && (
-        <View style={s.undoToast}>
-          <Text style={[s.body, { color: C.over }]}>
-            Forge triggered — donation sent 🔥
-          </Text>
-          <TouchableOpacity onPress={() => setForgeTriggered(null)}>
-            <Text style={[s.tiny, { color: C.textFaint }]}>OK</Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
-      {/* ── BOTTOM NAV ── */}
-      {screen !== "onboarding" && (
-        <View style={s.nav}>
-          {([
-            { id: "home", label: "Now" },
-            { id: "history", label: "Log" },
-            { id: "settings", label: "Setup" },
-          ] as { id: Screen; label: string }[]).map(({ id, label }) => (
-            <TouchableOpacity
-              key={id}
-              style={[s.navItem, screen === id && s.navItemActive]}
-              onPress={() => setScreen(id)}
-            >
-              <Text style={[s.navText, screen === id && s.navTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-    </SafeAreaView>
+        {/* ── BOTTOM NAV ── */}
+        {screen !== "onboarding" && (
+          <View style={s.nav}>
+            {([
+              { id: "home", label: "Now" },
+              { id: "history", label: "Log" },
+              { id: "settings", label: "Setup" },
+            ] as { id: Screen; label: string }[]).map(({ id, label }) => (
+              <TouchableOpacity
+                key={id}
+                style={[s.navItem, screen === id && s.navItemActive]}
+                onPress={() => setScreen(id)}
+              >
+                <Text style={[s.navText, screen === id && s.navTextActive]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
@@ -643,25 +625,25 @@ const s = StyleSheet.create({
   card: { backgroundColor: "#0e0e0e", borderWidth: 1, borderColor: "#252318", padding: 16 },
   callout: { flexDirection: "row", justifyContent: "space-between", padding: 14, backgroundColor: "#0a0a08", borderWidth: 1, borderColor: "#2a2818" },
 
-  serif: { fontFamily: Platform.OS === "android" ? "serif" : "Georgia", fontWeight: "400" },
-  label: { fontSize: 10, fontWeight: "600", color: "#6a6858", letterSpacing: 3, textTransform: "uppercase" },
-  sublabel: { fontSize: 10, fontWeight: "600", color: "#8a8870", letterSpacing: 2, textTransform: "uppercase" },
+  serif: { fontFamily: Platform.OS === "android" ? "serif" : "Georgia", fontWeight: "500" },
+  label: { fontSize: 11, fontWeight: "600", color: "#6a6858", letterSpacing: 3, textTransform: "uppercase" },
+  sublabel: { fontSize: 11, fontWeight: "600", color: "#8a8870", letterSpacing: 2, textTransform: "uppercase" },
   sectionTitle: { fontSize: 11, fontWeight: "600", color: "#9a9070", letterSpacing: 3, textTransform: "uppercase", marginBottom: 4 },
-  body: { fontSize: 12, fontWeight: "600", color: "#b0a890" },
-  tiny: { fontSize: 10, fontWeight: "600", color: "#6a6858", letterSpacing: 1.5 },
+  body: { fontSize: 13, fontWeight: "600", color: "#b0a890" },
+  tiny: { fontSize: 11, fontWeight: "600", color: "#6a6858", letterSpacing: 1.5 },
 
   btnPrimary: { backgroundColor: "#d8ceb9", paddingVertical: 14, alignItems: "center" },
   btnPrimaryText: { fontSize: 11, fontWeight: "600", color: "#0e0e0e", letterSpacing: 2, textTransform: "uppercase" },
   btnGhost: { borderWidth: 1, borderColor: "#3a3828", paddingVertical: 13, alignItems: "center" },
-  btnGhostText: { fontSize: 10, fontWeight: "600", color: "#9a9070", letterSpacing: 2, textTransform: "uppercase" },
+  btnGhostText: { fontSize: 11, fontWeight: "600", color: "#9a9070", letterSpacing: 2, textTransform: "uppercase" },
 
   tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "transparent", marginBottom: -1 },
   tabActive: { borderBottomColor: "#e8e0d0" },
-  tabText: { fontSize: 10, fontWeight: "600", color: "#5a5848", letterSpacing: 2 },
+  tabText: { fontSize: 11, fontWeight: "600", color: "#5a5848", letterSpacing: 2 },
   tabTextActive: { color: "#e8e0d0" },
 
   statCell: { flex: 1, backgroundColor: "#0e0e0e", paddingVertical: 12, alignItems: "center" },
-  statLabel: { fontSize: 10, fontWeight: "600", color: "#6a6858", letterSpacing: 1.5, marginBottom: 4 },
+  statLabel: { fontSize: 11, fontWeight: "600", color: "#6a6858", letterSpacing: 1.5, marginBottom: 4 },
   statValue: { fontSize: 12, fontWeight: "600", color: "#b0a890" },
 
   barTrack: { height: 1, backgroundColor: "#252318" },
@@ -672,13 +654,13 @@ const s = StyleSheet.create({
   monthBubble: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#3a3828", backgroundColor: "#0a0a08", overflow: "hidden" },
 
   historyRow: { borderTopWidth: 1, borderTopColor: "#252318", paddingVertical: 18, flexDirection: "row", gap: 14 },
-  histTag: { fontSize: 10, fontWeight: "600", color: "#6a6858" },
+  histTag: { fontSize: 11, fontWeight: "600", color: "#6a6858" },
   histVal: { fontSize: 12, fontWeight: "600", color: "#c0b898", marginRight: 12 },
 
-  nav: { flexDirection: "row", backgroundColor: "#0a0a08", borderTopWidth: 1, marginBottom: 24,borderRadius: 12,  borderTopColor: "#252318" },
+  nav: { flexDirection: "row", backgroundColor: "#0a0a08", borderTopWidth: 1, marginBottom: 24, borderRadius: 12, borderTopColor: "#252318" },
   navItem: { flex: 1, paddingVertical: 16, alignItems: "center", borderTopWidth: 1, borderTopColor: "transparent" },
   navItemActive: { borderTopColor: "#e8e0d0" },
-  navText: { fontSize: 10, fontWeight: "600", color: "#4a4838", letterSpacing: 2, textTransform: "uppercase" },
+  navText: { fontSize: 11, fontWeight: "600", color: "#4a4838", letterSpacing: 2, textTransform: "uppercase" },
   navTextActive: { color: "#e8e0d0" },
 
   undoToast: { position: "absolute", bottom: 80, left: 20, right: 20, backgroundColor: "#181612", borderWidth: 1, borderColor: "#3a3828", flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14 },
@@ -686,5 +668,5 @@ const s = StyleSheet.create({
 
   pickerBtn: { flex: 1, backgroundColor: "#141410", borderWidth: 1, borderColor: "#3a3828", padding: 12, alignItems: "center" },
   pickerVal: { fontSize: 22, fontWeight: "600", color: "#e8e0d0" },
-  pickerLabel: { fontSize: 10, fontWeight: "600", color: "#6a6858", marginTop: 2 },
+  pickerLabel: { fontSize: 11, fontWeight: "600", color: "#6a6858", marginTop: 2 },
 });

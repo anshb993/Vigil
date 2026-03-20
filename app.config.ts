@@ -16,7 +16,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: "./assets/adaptive-icon.png",
       backgroundColor: "#0e0e0e",
     },
-    package: "com.yourname.vigil",
+    package: "com.vigil",
     permissions: [
       // For UsageStats (screen time) - user grants manually in Settings
       "android.permission.PACKAGE_USAGE_STATS",
