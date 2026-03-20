@@ -1,2 +1,4 @@
 this is bullshit
 
+the widget is still broken, dont know what is going wrong.
+will try on my phone tomorrow.
