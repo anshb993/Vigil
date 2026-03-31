@@ -4,5 +4,5 @@ the widget is still broken, dont know what is going wrong.
 will try on my phone tomorrow. gg
 dont i have to push the android files on github? i changed those too right?
 
-widget fixed.
+widget fixed. works only on phone though.
 but issues with widget_countdown. starts at an absurdly high number.
