@@ -310,7 +310,7 @@ export default function App() {
               </View>
 
               {/* Tab bar */}
-              <View style={[s.row, { borderBottomWidth: 1, borderBottomColor: C.borderDim, marginHorizontal: 28, marginTop: 16 }]}>
+              <View style={[s.row, { borderBottomWidth: 1, borderBottomColor: C.borderDim, marginHorizontal: 28, marginTop: 16, marginBottom: 16 }]}>
                 {(["today", "month", "year"] as HomeTab[]).map(tab => (
                   <TouchableOpacity
                     key={tab}
@@ -432,7 +432,7 @@ export default function App() {
                         <View key={d} style={[
                           s.dayBubble,
                           isPast && { backgroundColor: "#2a2818" },
-                          isToday && { backgroundColor: "#9a8450" },
+                          isToday && { backgroundColor: "#242111" },
                           isFuture && { borderColor: "#3a3828" },
                         ]}>
                           {isToday && (
@@ -464,7 +464,7 @@ export default function App() {
                   </View>
 
                   {/* Month bubbles — 2 rows of 6 */}
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28, justifyContent: "center"  }}>
                     {monthNames.map((name, i) => {
                       const isPast = i < curMonth;
                       const isNow = i === curMonth;
@@ -482,7 +482,7 @@ export default function App() {
                           {!isFuture && (
                             <View style={[s.dayFill, { height: `${fill * 100}%` as any, backgroundColor: isPast ? "#2a2818" : "#6e5e3a" }]} />
                           )}
-                          <Text style={[s.tiny, { fontSize: 8, color: isFuture ? "#4a4838" : isPast ? "#7a7868" : C.gold, zIndex: 1 }]}>
+                          <Text style={[s.tiny, { fontSize: 10, color: isFuture ? "#4a4838" : isPast ? "#7a7868" : C.gold, zIndex: 1 }]}>
                             {name}
                           </Text>
                         </View>
@@ -606,8 +606,8 @@ function ProgressBar({ label, pct }: { label: string; pct: number }) {
   return (
     <View style={{ marginBottom: 20 }}>
       <View style={[{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }]}>
-        <Text style={{ fontSize: 9, fontWeight: "600", color: "#6a6858", letterSpacing: 1.5 }}>{label}</Text>
-        <Text style={{ fontSize: 9, fontWeight: "600", color: "#6a6858" }}>{(pct * 100).toFixed(1)}%</Text>
+        <Text style={{ fontSize: 10, fontWeight: "600", color: "#6a6858", letterSpacing: 1.5 }}>{label}</Text>
+        <Text style={{ fontSize: 10, fontWeight: "600", color: "#6a6858" }}>{(pct * 100).toFixed(1)}%</Text>
       </View>
       <View style={{ height: 1, backgroundColor: "#252318" }}>
         <View style={{ height: "100%", width: `${pct * 100}%` as any, backgroundColor: "#6a5c38" }} />
