@@ -6,3 +6,7 @@ dont i have to push the android files on github? i changed those too right?
 
 widget fixed. works only on phone though.
 but issues with widget_countdown. starts at an absurdly high number.
+fixed it, apparently it was just the android not refreshing the app cache or smtg.
+
+widget is done.
+the next thing is usage stats.
