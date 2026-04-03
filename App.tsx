@@ -14,6 +14,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
+  Alert,
   TouchableOpacity,
   ScrollView,
   StyleSheet,
@@ -186,22 +187,6 @@ export default function App() {
     if (bedTarget) await scheduleBedtimeNudge(getBedTarget(t, settings).getTime());
   }, [settings]);
 
-  const confirmBedtime = useCallback(() => {
-    setUndoSecs(5);
-    setUndoVisible(true);
-    if (undoRef.current) clearInterval(undoRef.current);
-    let rem = 5;
-    undoRef.current = setInterval(async () => {
-      rem -= 1;
-      setUndoSecs(rem);
-      if (rem <= 0) {
-        clearInterval(undoRef.current!);
-        undoRef.current = null;
-        await commitBedtime();
-      }
-    }, 1000);
-  }, [wakeTime, settings]);
-
   const commitBedtime = useCallback(async () => {
     const bn = new Date();
     setBedTime(bn.toISOString());
@@ -223,6 +208,17 @@ export default function App() {
       setHistoryState(await loadHistory());
     }
   }, [wakeTime, settings, bedTarget]);
+
+  const confirmBedtime = useCallback(() => {
+    Alert.alert(
+      "End Day",
+      "Are you sure you want to end your day?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "End Day", style: "destructive", onPress: () => commitBedtime() },
+      ]
+    );
+  }, [commitBedtime]);
 
   const undoBedtime = useCallback(() => {
     if (undoRef.current) { clearInterval(undoRef.current); undoRef.current = null; }
@@ -351,6 +347,17 @@ export default function App() {
                           Slept at {formatTime(new Date(bedTime))}
                         </Text>
                       )}
+                      <TouchableOpacity
+                        style={[s.btnPrimary, { width: "100%", marginTop: 32 }]}
+                        onPress={async () => {
+                          await clearActiveDay();
+                          setWakeTime(null);
+                          setBedTime(null);
+                          setDayEnded(false);
+                        }}
+                      >
+                        <Text style={s.btnPrimaryText}>Start New Day</Text>
+                      </TouchableOpacity>
                     </View>
                   )}
 
@@ -464,7 +471,7 @@ export default function App() {
                   </View>
 
                   {/* Month bubbles — 2 rows of 6 */}
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28, justifyContent: "center"  }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 28, justifyContent: "center" }}>
                     {monthNames.map((name, i) => {
                       const isPast = i < curMonth;
                       const isNow = i === curMonth;
