@@ -120,6 +120,7 @@ export default function App() {
   const [undoVisible, setUndoVisible] = useState(false);
   const [undoSecs, setUndoSecs] = useState(5);
   const [now, setNow] = useState(new Date());
+  const [showEndDayModal, setShowEndDayModal] = useState(false);
 
   const undoRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -210,15 +211,8 @@ export default function App() {
   }, [wakeTime, settings, bedTarget]);
 
   const confirmBedtime = useCallback(() => {
-    Alert.alert(
-      "End Day",
-      "Are you sure you want to end your day?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "End Day", style: "destructive", onPress: () => commitBedtime() },
-      ]
-    );
-  }, [commitBedtime]);
+    setShowEndDayModal(true);
+  }, []);
 
   const undoBedtime = useCallback(() => {
     if (undoRef.current) { clearInterval(undoRef.current); undoRef.current = null; }
@@ -336,7 +330,7 @@ export default function App() {
                   )}
 
                   {wakeTime && dayEnded && (
-                    <View style={{ alignItems: "center" }}>
+                    <View style={{ alignItems: "center", width: "75%" }}>
                       <Text style={[s.label, { marginBottom: 20 }]}>DAY ENDED</Text>
                       <Text style={[s.serif, { fontSize: 42, color: C.textGhost }]}>
                         {formatDuration(elapsed, false)}
@@ -351,6 +345,7 @@ export default function App() {
                         style={[s.btnPrimary, { width: "100%", marginTop: 32 }]}
                         onPress={async () => {
                           await clearActiveDay();
+                          await syncClearDay();
                           setWakeTime(null);
                           setBedTime(null);
                           setDayEnded(false);
@@ -582,7 +577,39 @@ export default function App() {
           </View>
         )}
 
-
+        {showEndDayModal && (
+          <View style={{
+            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.85)",
+            justifyContent: "flex-end",
+            zIndex: 100,
+          }}>
+            <View style={{
+              backgroundColor: "#0a0a08",
+              borderTopWidth: 1,
+              borderColor: "#252318",
+              padding: 28,
+              paddingBottom: 48,
+            }}>
+              <Text style={[s.label, { marginBottom: 12 }]}>End Day</Text>
+              <Text style={[s.body, { color: C.textFaint, marginBottom: 32 }]}>
+                Confirm your bedtime and close out today.
+              </Text>
+              <TouchableOpacity
+                style={[s.btnPrimary, { marginBottom: 10 }]}
+                onPress={() => { setShowEndDayModal(false); commitBedtime(); }}
+              >
+                <Text style={s.btnPrimaryText}>Confirm — End Day</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.btnGhost}
+                onPress={() => setShowEndDayModal(false)}
+              >
+                <Text style={s.btnGhostText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* ── BOTTOM NAV ── */}
         {screen !== "onboarding" && (
