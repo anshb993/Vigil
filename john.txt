@@ -10,3 +10,12 @@ fixed it, apparently it was just the android not refreshing the app cache or smt
 
 widget is done.
 the next thing is usage stats.
+
+Run a release build — it's standalone, no Metro needed:
+powershellcd android
+.\gradlew.bat assembleRelease
+The APK will be at:
+android\app\build\outputs\apk\release\app-release-unsigned.apk
+Since it's unsigned, install it with:
+powershelladb install android\app\build\outputs\apk\release\app-release-unsigned.apk
+This runs completely standalone on your phone with no PC connection needed. Note that it won't have hot reload or error overlays — it'll behave like a real app.
