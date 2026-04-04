@@ -1,19 +1,4 @@
-this is bullshit
-
-the widget is still broken, dont know what is going wrong.
-will try on my phone tomorrow. gg
-dont i have to push the android files on github?
-
-widget fixed. works only on phone though.
-but issues with widget_countdown. starts at an absurdly high number.
-fixed it, apparently it was just the android not refreshing the app cache or smtg.
-
-widget is done.
-the next thing is usage stats.
-
 # cd android
 # .\gradlew.bat assembleRelease
 # android\app\build\outputs\apk\release\app-release.apk
 # adb install android\app\build\outputs\apk\release\app-release-unsigned.apk
-
-test the apk for couple of days and then start working on the usage stats
