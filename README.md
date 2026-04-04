@@ -2,9 +2,6 @@
 
 > A mirror for your waking hours.
 
-Vigil is a minimalist Android app that reflects how your day is passing — Just an honest look at time.
-
-
 ## What it does
 
 - Tracks your waking hours from the moment you start your day to bedtime
