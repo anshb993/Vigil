@@ -17,23 +17,6 @@ export async function requestNotificationPermission(): Promise<boolean> {
   return status === "granted";
 }
 
-export async function sendTestNotification(): Promise<void> {
-  const granted = await requestNotificationPermission();
-  if (!granted) {
-    console.log("VIGIL: permission not granted");
-    return;
-  }
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: "Vigil",
-      body: "Test notification working.",
-      sound: true,
-    },
-    trigger: null, // fires immediately
-  });
-}
-
-
 export async function scheduleReminders(
   bedH: number,
   bedM: number,

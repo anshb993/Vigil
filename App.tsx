@@ -39,7 +39,6 @@ import {
   requestNotificationPermission,
   scheduleReminders,
   cancelAllReminders,
-  sendTestNotification,
 } from "./src/notification";
 import {
   requestUsagePermission,
@@ -570,16 +569,6 @@ export default function App() {
                   <Text style={s.pickerLabel}>min ↕</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* REmove test notification */}
-              <View style={[s.divider, { marginVertical: 36 }]} />
-              <TouchableOpacity
-                style={[s.btnGhost, { marginTop: 16 }]}
-                onPress={sendTestNotification}
-              >
-                <Text style={s.btnGhostText}>Test Notification</Text>
-              </TouchableOpacity>
-              {/* REmove test notification */}
 
               {/* Reminders */}
               <View style={{ marginBottom: 24 }}>
