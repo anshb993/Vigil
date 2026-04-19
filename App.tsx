@@ -434,14 +434,15 @@ export default function App() {
                         <View key={d} style={[
                           s.dayBubble,
                           isPast && { backgroundColor: "#2a2818" },
-                          isToday && { backgroundColor: "#242111" },
+                          isToday && { backgroundColor: "#10100d" },
+                          isToday && { borderColor: "#73692a" },
                           isFuture && { borderColor: "#3a3828" },
                         ]}>
                           {isToday && (
                             <View style={[s.dayFill, { height: `${progress * 100}%` as any }]} />
                           )}
                           <Text style={[s.tiny, {
-                            color: isPast ? "#9a9070" : isToday ? "#0e0e0e" : "#5a5848",
+                            color: isPast ? "#9a9070" : isToday ? "#9a9070" : "#5a5848",
                             position: "relative", zIndex: 1,
                           }]}>{d}</Text>
                         </View>
