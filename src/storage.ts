@@ -19,6 +19,7 @@ export interface AppSettings {
   forgeEnabled: boolean;
   forgeAmountCents: number;
   forgeCharity: string;
+  reminders: number[];
   distractionApps: string[]; // package names e.g. "com.instagram.android"
 }
 
@@ -42,6 +43,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     "com.zhiliaoapp.musically", // TikTok
     "com.reddit.frontpage",
   ],
+  reminders: [30],
 };
 
 export async function loadSettings(): Promise<AppSettings> {

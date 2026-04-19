@@ -20,6 +20,7 @@ import {
   StyleSheet,
   StatusBar,
   Platform,
+  TextInput,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -36,8 +37,9 @@ import {
 } from "./src/storage";
 import {
   requestNotificationPermission,
-  scheduleBedtimeNudge,
-  cancelBedtimeNudge,
+  scheduleReminders,
+  cancelAllReminders,
+  sendTestNotification,
 } from "./src/notification";
 import {
   requestUsagePermission,
@@ -121,7 +123,7 @@ export default function App() {
   const [undoSecs, setUndoSecs] = useState(5);
   const [now, setNow] = useState(new Date());
   const [showEndDayModal, setShowEndDayModal] = useState(false);
-
+  const scheduleDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const undoRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Boot: load persisted state ─────────────────────────────────
@@ -185,7 +187,6 @@ export default function App() {
     setScreen("home");
     await saveActiveDay({ wakeTime: t });
     await syncWakeTime(t);
-    if (bedTarget) await scheduleBedtimeNudge(getBedTarget(t, settings).getTime());
   }, [settings]);
 
   const commitBedtime = useCallback(async () => {
@@ -193,8 +194,8 @@ export default function App() {
     setBedTime(bn.toISOString());
     setDayEnded(true);
     setUndoVisible(false);
-    await cancelBedtimeNudge();
     await syncDayEnded();
+    await cancelAllReminders();
     if (wakeTime) {
       const log: DayLog = {
         date: new Date(wakeTime).toISOString().split("T")[0],
@@ -223,6 +224,15 @@ export default function App() {
     setSettings(s);
     await saveSettings(s);
     await syncBedBaseline(s.baselineBedH, s.baselineBedM);
+    if (scheduleDebounceRef.current) clearTimeout(scheduleDebounceRef.current);
+    scheduleDebounceRef.current = setTimeout(async () => {
+      if (s.reminders.length > 0) {
+        await scheduleReminders(s.baselineBedH, s.baselineBedM, s.reminders);
+      } else {
+        await cancelAllReminders();
+      }
+    }, 1000);
+
   }, []);
 
   // ── Month/Year data ───────────────────────────────────────────
@@ -237,7 +247,7 @@ export default function App() {
   const daysInYear = isLeap ? 366 : 365;
   const yearProgress = dayOfYear / daysInYear;
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
+  const [reminderInput, setReminderInput] = useState("");
   // ── Render ────────────────────────────────────────────────────
   return (
     <SafeAreaProvider>
@@ -560,10 +570,75 @@ export default function App() {
                 </TouchableOpacity>
               </View>
 
+              {/* REmove test notification */}
               <View style={[s.divider, { marginVertical: 36 }]} />
+              <TouchableOpacity
+                style={[s.btnGhost, { marginTop: 16 }]}
+                onPress={sendTestNotification}
+              >
+                <Text style={s.btnGhostText}>Test Notification</Text>
+              </TouchableOpacity>
+              {/* REmove test notification */}
 
+              {/* Reminders */}
+              <View style={{ marginBottom: 24 }}>
+                <Text style={[s.label, { marginBottom: 16 }]}>Reminders</Text>
+
+                {settings.reminders.map((mins, i) => (
+                  <View key={i} style={[s.callout, { marginBottom: 8, alignItems: "center" }]}>
+                    <Text style={[s.body, { color: C.text }]}>{mins} min before bedtime</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        const updated = settings.reminders.filter((_, idx) => idx !== i);
+                        setSettings({ ...settings, reminders: updated });
+                      }}
+                    >
+                      <Text style={[s.label, { color: C.over, letterSpacing: 1 }]}>REMOVE</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+
+                {/* Add reminder row */}
+                <View style={[s.callout, { marginTop: 8, alignItems: "center" }]}>
+                  <TextInput
+                    style={[s.body, {
+                      color: C.text,
+                      borderBottomWidth: 1,
+                      borderColor: C.border,
+                      width: 48,
+                      textAlign: "center",
+                      paddingVertical: 4,
+                    }]}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                    placeholder="min"
+                    placeholderTextColor={C.textFaint}
+                    value={reminderInput}
+                    onChangeText={setReminderInput}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      borderWidth: 1,
+                      borderColor: C.border,
+                      paddingHorizontal: 14,
+                      paddingVertical: 6,
+                    }}
+                    onPress={() => {
+                      const val = parseInt(reminderInput);
+                      if (!isNaN(val) && val > 0 && val <= 1440 && !settings.reminders.includes(val)) {
+                        setSettings({ ...settings, reminders: [...settings.reminders, val].sort((a, b) => b - a) });
+                        setReminderInput("");
+                      }
+                    }}
+                  >
+                    <Text style={[s.label, { color: C.textFaint, letterSpacing: 1 }]}>ADD</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
+
           )}
+
         </ScrollView>
 
         {/* ── UNDO TOAST ── */}
