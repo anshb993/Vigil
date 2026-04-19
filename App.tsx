@@ -552,7 +552,7 @@ export default function App() {
           {/* ── SETTINGS ── */}
           {screen === "settings" && (
             <View style={[s.pad, { paddingTop: 24, justifyContent: "space-between" }]}>
-              <Text style={s.sectionTitle}>Baseline</Text>
+              <Text style={s.sectionTitle}>Settings</Text>
               <Text style={[s.sublabel, { marginTop: 28, marginBottom: 10 }]}>TARGET BEDTIME</Text>
               <View style={s.row}>
                 <TouchableOpacity style={s.pickerBtn} onPress={() =>
@@ -571,8 +571,8 @@ export default function App() {
               </View>
 
               {/* Reminders */}
-              <View style={{ marginBottom: 24 }}>
-                <Text style={[s.label, { marginBottom: 16 }]}>Reminders</Text>
+              <View style={{ marginTop: 24 }}>
+                <Text style={[s.label, { marginBottom: 10 }]}>Reminders</Text>
 
                 {settings.reminders.map((mins, i) => (
                   <View key={i} style={[s.callout, { marginBottom: 8, alignItems: "center" }]}>
