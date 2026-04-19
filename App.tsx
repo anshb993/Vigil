@@ -231,6 +231,7 @@ export default function App() {
       } else {
         await cancelAllReminders();
       }
+
     }, 1000);
 
   }, []);
@@ -589,9 +590,11 @@ export default function App() {
                     <Text style={[s.body, { color: C.text }]}>{mins} min before bedtime</Text>
                     <TouchableOpacity
                       onPress={() => {
-                        const updated = settings.reminders.filter((_, idx) => idx !== i);
-                        setSettings({ ...settings, reminders: updated });
+                        const updated = { ...settings, reminders: settings.reminders.filter((_, idx) => idx !== i) };
+                        setSettings(updated);
+                        saveSettingsAndApply(updated);
                       }}
+
                     >
                       <Text style={[s.label, { color: C.over, letterSpacing: 1 }]}>REMOVE</Text>
                     </TouchableOpacity>
@@ -626,7 +629,9 @@ export default function App() {
                     onPress={() => {
                       const val = parseInt(reminderInput);
                       if (!isNaN(val) && val > 0 && val <= 1440 && !settings.reminders.includes(val)) {
-                        setSettings({ ...settings, reminders: [...settings.reminders, val].sort((a, b) => b - a) });
+                        const updated = { ...settings, reminders: [...settings.reminders, val].sort((a, b) => b - a) };
+                        setSettings(updated);
+                        saveSettingsAndApply(updated);
                         setReminderInput("");
                       }
                     }}
