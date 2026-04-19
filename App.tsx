@@ -513,41 +513,120 @@ export default function App() {
             </View>
           )}
 
-          {/* ── HISTORY ── */}
-          {screen === "history" && (
-            <View style={[s.pad, { paddingTop: 24, justifyContent: "space-between" }]}>
-              <Text style={[s.sectionTitle, { marginBottom: 36 }]}>History</Text>
-              {history.map((day, i) => (
-                <View key={i} style={s.historyRow}>
-                  <Text style={[s.body, { color: C.textDim, width: 96 }]}>
-                    {new Date(day.date).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
-                  </Text>
-                  <View style={{ flex: 1 }}>
-                    <View style={[s.row, { marginBottom: 8 }]}>
-                      <Text style={s.histTag}>WAKE </Text>
-                      <Text style={s.histVal}>{formatTime(new Date(day.wakeTime))}  </Text>
-                      <Text style={s.histTag}>BED </Text>
-                      <Text style={[s.histVal, day.overtime && { color: C.over }]}>
-                        {day.bedTime ? formatTime(new Date(day.bedTime)) : "—"}
-                      </Text>
+          {screen === "history" && (() => {
+            const completed = history.filter(d => d.bedTime);
+
+            // Monthly summary calculations
+            const avgWakeMs = completed.length
+              ? completed.reduce((sum, d) => {
+                const w = new Date(d.wakeTime);
+                return sum + w.getHours() * 60 + w.getMinutes();
+              }, 0) / completed.length
+              : null;
+
+            const avgBedMs = completed.length
+              ? completed.reduce((sum, d) => {
+                const b = new Date(d.bedTime!);
+                return sum + b.getHours() * 60 + b.getMinutes();
+              }, 0) / completed.length
+              : null;
+
+            const avgActiveMs = completed.length
+              ? completed.reduce((sum, d) => {
+                const ms = new Date(d.bedTime!).getTime() - new Date(d.wakeTime).getTime();
+                return sum + ms / 3600000;
+              }, 0) / completed.length
+              : null;
+
+            const fmtAvgTime = (totalMins: number) => {
+              const h = Math.floor(totalMins / 60) % 24;
+              const m = Math.floor(totalMins % 60);
+              const ampm = h >= 12 ? "PM" : "AM";
+              const h12 = h % 12 || 12;
+              return `${h12}:${pad(m)} ${ampm}`;
+            };
+
+            const fmtHours = (h: number) => {
+              const hrs = Math.floor(h);
+              const mins = Math.round((h - hrs) * 60);
+              return `${hrs}h ${pad(mins)}m`;
+            };
+
+            return (
+              <View style={[s.pad, { paddingTop: 24 }]}>
+                <Text style={[s.sectionTitle, { marginBottom: 24 }]}>History</Text>
+
+                {/* Monthly Summary */}
+                {completed.length > 0 && (
+                  <View style={{ marginBottom: 36 }}>
+                    <Text style={[s.label, { marginBottom: 14 }]}>This Month</Text>
+                    <View style={s.card}>
+                      <View style={[s.callout, { marginBottom: 1 }]}>
+                        <Text style={s.label}>AVG WAKE</Text>
+                        <Text style={[s.body, { color: C.text }]}>{fmtAvgTime(avgWakeMs!)}</Text>
+                      </View>
+                      <View style={[s.callout, { marginBottom: 1 }]}>
+                        <Text style={s.label}>AVG BEDTIME</Text>
+                        <Text style={[s.body, { color: C.text }]}>{fmtAvgTime(avgBedMs!)}</Text>
+                      </View>
+                      <View style={s.callout}>
+                        <Text style={s.label}>AVG ACTIVE WINDOW</Text>
+                        <Text style={[s.body, { color: C.text }]}>{fmtHours(avgActiveMs!)}</Text>
+                      </View>
                     </View>
-                    <View style={s.barTrack}>
-                      <View style={[s.barFill, {
-                        width: `${Math.min(((day.bedTime ? (new Date(day.bedTime).getTime() - new Date(day.wakeTime).getTime()) / 3600000 : 0) / 16) * 100, 100)}%` as any,
-                        backgroundColor: day.overtime ? "#6a1810" : "#4a4030",
-                      }]} />
-                    </View>
-                    {day.overtime && (
-                      <Text style={[s.tiny, { color: C.over, marginTop: 4 }]}>overtime</Text>
-                    )}
+                    <Text style={[s.tiny, { color: C.textGhost, marginTop: 8 }]}>
+                      Based on {completed.length} completed day{completed.length === 1 ? "" : "s"}
+                    </Text>
                   </View>
-                </View>
-              ))}
-              {history.length === 0 && (
-                <Text style={[s.body, { color: C.textGhost }]}>No days logged yet.</Text>
-              )}
-            </View>
-          )}
+                )}
+
+                {/* Daily Logs */}
+                <Text style={[s.label, { marginBottom: 14 }]}>Daily Logs</Text>
+                {history.map((day, i) => {
+                  const activeMs = day.bedTime
+                    ? new Date(day.bedTime).getTime() - new Date(day.wakeTime).getTime()
+                    : null;
+                  const activeHours = activeMs ? activeMs / 3600000 : null;
+
+                  return (
+                    <View key={i} style={s.historyRow}>
+                      <Text style={[s.body, { color: C.textDim, width: 96 }]}>
+                        {new Date(day.date).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}
+                      </Text>
+                      <View style={{ flex: 1 }}>
+                        <View style={[s.row, { marginBottom: 6 }]}>
+                          <Text style={s.histTag}>WAKE </Text>
+                          <Text style={s.histVal}>{formatTime(new Date(day.wakeTime))}  </Text>
+                          <Text style={s.histTag}>BED </Text>
+                          <Text style={[s.histVal, day.overtime && { color: C.over }]}>
+                            {day.bedTime ? formatTime(new Date(day.bedTime)) : "—"}
+                          </Text>
+                        </View>
+                        {activeHours !== null && (
+                          <View style={[s.row, { marginBottom: 6 }]}>
+                            <Text style={s.histTag}>ACTIVE </Text>
+                            <Text style={[s.histVal, day.overtime && { color: C.over }]}>
+                              {fmtHours(activeHours)}
+                            </Text>
+                          </View>
+                        )}
+                        <View style={s.barTrack}>
+                          <View style={[s.barFill, {
+                            width: `${Math.min(((activeHours ?? 0) / 16) * 100, 100)}%` as any,
+                            backgroundColor: day.overtime ? "#6a1810" : "#4a4030",
+                          }]} />
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+
+                {history.length === 0 && (
+                  <Text style={[s.body, { color: C.textGhost }]}>No days logged yet.</Text>
+                )}
+              </View>
+            );
+          })()}
 
           {/* ── SETTINGS ── */}
           {screen === "settings" && (
