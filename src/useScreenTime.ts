@@ -15,20 +15,20 @@ export interface AppUsage {
 
 // Human-readable names for common apps
 const APP_NAMES: Record<string, string> = {
-  "com.instagram.android":    "Instagram",
-  "com.twitter.android":      "Twitter / X",
+  "com.instagram.android": "Instagram",
+  "com.twitter.android": "Twitter / X",
   "com.zhiliaoapp.musically": "TikTok",
-  "com.reddit.frontpage":     "Reddit",
+  "com.reddit.frontpage": "Reddit",
   "com.google.android.youtube": "YouTube",
-  "com.whatsapp":             "WhatsApp",
-  "com.facebook.katana":      "Facebook",
-  "com.snapchat.android":     "Snapchat",
+  "com.whatsapp": "WhatsApp",
+  "com.facebook.katana": "Facebook",
+  "com.snapchat.android": "Snapchat",
 };
 
 const MOCK_DATA: AppUsage[] = [
-  { packageName: "com.whatsapp",             displayName: "WhatsApp",  minutes: 47 },
-  { packageName: "com.android.chrome",       displayName: "Browser",   minutes: 91 },
-  { packageName: "com.instagram.android",    displayName: "Instagram", minutes: 68 },
+  { packageName: "com.whatsapp", displayName: "WhatsApp", minutes: 47 },
+  { packageName: "com.android.chrome", displayName: "Browser", minutes: 91 },
+  { packageName: "com.instagram.android", displayName: "Instagram", minutes: 68 },
   { packageName: "com.google.android.youtube", displayName: "YouTube", minutes: 34 },
 ];
 

@@ -21,6 +21,7 @@ import {
   StatusBar,
   Platform,
   TextInput,
+  Linking,
 } from "react-native";
 import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import {
@@ -234,7 +235,7 @@ export default function App() {
     }, 1000);
 
   }, []);
-
+  
   // ── Month/Year data ───────────────────────────────────────────
   const curYear = now.getFullYear();
   const curMonth = now.getMonth();
@@ -414,6 +415,7 @@ export default function App() {
                           </View>
                         ))}
                       </View>
+
 
                       <TouchableOpacity style={[s.btnGhost, { width: "100%" }]} onPress={confirmBedtime}>
                         <Text style={s.btnGhostText}>End day — confirm bedtime now</Text>
