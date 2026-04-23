@@ -79,10 +79,10 @@ val timeStr = if (isOvertime)
     "+${h}h ${m.toString().padStart(2,'0')}m"
 else
     "${h}h ${m.toString().padStart(2,'0')}m"
-    
-                views.setTextViewText(R.id.widget_countdown, timeStr)
+
                 views.setTextViewText(R.id.widget_countdown_label,
                     if (isOvertime) "OVERTIME" else "ACTIVE")
+                views.setTextViewText(R.id.widget_countdown, timeStr)
                 views.setTextColor(R.id.widget_countdown,
                     if (isOvertime) 0xFFC04030.toInt() else 0xFFE8E0D0.toInt())
                 views.setTextColor(R.id.widget_countdown_label,

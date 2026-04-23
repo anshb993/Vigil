@@ -7,6 +7,14 @@
     android:padding="12dp">
 
     <TextView
+        android:id="@+id/widget_countdown_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="REMAINING"
+        android:textColor="#6A6858"
+        android:textSize="8sp" />
+
+    <TextView
         android:id="@+id/widget_countdown"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -17,15 +25,6 @@
         android:textStyle="bold"
         android:letterSpacing="-0.03"
         android:layout_marginBottom="2dp" />
-
-    <TextView
-        android:id="@+id/widget_countdown_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="REMAINING"
-        android:textColor="#6A6858"
-        android:textSize="8sp"
-        android:layout_marginBottom="10dp" />
 
     <TextView
         android:id="@+id/widget_month_pct"
