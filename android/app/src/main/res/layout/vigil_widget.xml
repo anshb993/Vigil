@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0E0E0E"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/widget_countdown"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0h 00m"
+        android:textColor="#E8E0D0"
+        android:textSize="44sp"
+        android:fontFamily="serif"
+        android:textStyle="bold"
+        android:letterSpacing="-0.03"
+        android:layout_marginBottom="2dp" />
+
+    <TextView
+        android:id="@+id/widget_countdown_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="REMAINING"
+        android:textColor="#6A6858"
+        android:textSize="8sp"
+        android:layout_marginBottom="10dp" />
+
+    <TextView
+        android:id="@+id/widget_month_pct"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="MONTH 0%"
+        android:textColor="#6A6858"
+        android:textSize="9sp"
+        android:layout_marginBottom="2dp" />
+
+    <TextView
+        android:id="@+id/widget_month_days_val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="— days remaining"
+        android:textColor="#B0A890"
+        android:textSize="12sp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/widget_year_pct"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="YEAR 0%"
+        android:textColor="#6A6858"
+        android:textSize="9sp"
+        android:layout_marginBottom="2dp" />
+
+    <TextView
+        android:id="@+id/widget_year_days_val"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="— days remaining"
+        android:textColor="#B0A890"
+        android:textSize="12sp" />
+
+</LinearLayout>

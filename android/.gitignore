@@ -1,0 +1,19 @@
+# Android signing
+*.keystore
+*.jks
+android/app/release/
+
+# Local env
+.env
+.env.local
+
+# Expo
+.expo/
+
+# Node
+node_modules/
+
+# Build outputs
+android/app/build/
+android/build/
+android/app/.cxx/
