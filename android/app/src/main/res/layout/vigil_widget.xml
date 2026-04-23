@@ -12,7 +12,7 @@
         android:layout_height="wrap_content"
         android:text="REMAINING"
         android:textColor="#B0A890"
-        android:textSize="8sp" />
+        android:textSize="10sp" />
 
     <TextView
         android:id="@+id/widget_countdown"
