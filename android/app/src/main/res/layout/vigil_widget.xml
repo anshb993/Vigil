@@ -11,7 +11,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="REMAINING"
-        android:textColor="#6A6858"
+        android:textColor="#B0A890"
         android:textSize="8sp" />
 
     <TextView
@@ -31,7 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="MONTH 0%"
-        android:textColor="#6A6858"
+        android:textColor="#B0A890"
         android:textSize="9sp"
         android:layout_marginBottom="2dp" />
 
@@ -40,8 +40,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="— days remaining"
-        android:textColor="#B0A890"
-        android:textSize="12sp"
+        android:textColor="#E8E0D0"
+        android:textSize="13sp"
         android:layout_marginBottom="8dp" />
 
     <TextView
@@ -49,7 +49,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="YEAR 0%"
-        android:textColor="#6A6858"
+        android:textColor="#B0A890"
         android:textSize="9sp"
         android:layout_marginBottom="2dp" />
 
@@ -58,7 +58,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="— days remaining"
-        android:textColor="#B0A890"
-        android:textSize="12sp" />
+        android:textColor="#E8E0D0"
+        android:textSize="13sp" />
 
 </LinearLayout>
