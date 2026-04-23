@@ -77,9 +77,6 @@ APK output: `android/app/build/outputs/apk/release/app-release.apk`
 
 ## Roadmap
 
-- [ ] Midnight auto-reset
-- [ ] Real UsageStats integration
-- [ ] Restore notifications (dev build)
 - [ ] Forge Mode — charitable donation on distraction app open
 - [ ] Play Store release via EAS Build
 
