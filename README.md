@@ -68,17 +68,10 @@ APK output: `android/app/build/outputs/apk/release/app-release.apk`
 
 ## Known Limitations
 
-- **Screen time** — currently returns mock data. Real data requires registering `UsageStatsModule.kt` and granting the `PACKAGE_USAGE_STATS` permission.
-- **Notifications** — stubbed out. Requires a dev build (`npx expo run:android`) to restore `expo-notifications`.
-- **Forge Mode** — UI and toggle exist, payment integration not yet implemented.
+- **Screen time** — currently returns mock data
+- **Notifications** — pretty buggy
 - **Midnight reset** — no automatic new day reset yet. Must manually tap "Start New Day".
-- **iOS** — not in scope yet.
 
-
-## Roadmap
-
-- [ ] Forge Mode — charitable donation on distraction app open
-- [ ] Play Store release via EAS Build
 
 
 ## License
