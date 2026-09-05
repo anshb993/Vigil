@@ -1,6 +1,7 @@
 # Vigil — Conscious Time Tracker
 
 > A mirror for your waking hours.
+<img width="1920" height="1080" alt="Slide 16_9 - 1 (1)" src="https://github.com/user-attachments/assets/84e89085-7a6c-4848-b0ab-e8fa5d13a55a" />
 
 ## What it does
 
